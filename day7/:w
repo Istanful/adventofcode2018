@@ -1,0 +1,97 @@
+require 'minitest/autorun'
+
+class Instruction
+  attr_reader :dependent_step, :step
+
+  def initialize(dependent_step, step)
+    @dependent_step = dependent_step
+    @step = step
+  end
+
+  def self.[](dependent_step, step)
+    new(dependent_step, step)
+  end
+
+  def self.from_string(string)
+    _, dependent_step, step = string.match(/Step (.+) must be finished before step (.+) can begin./).to_a
+    new(dependent_step, step)
+  end
+
+  def depend_on?(instruction)
+    instruction.step == dependent_step
+  end
+
+  def to_s
+    "#{dependent_step} then #{step}"
+  end
+end
+
+class DependencyTree
+  attr_reader :instructions
+
+  def initialize(instructions)
+    @instructions = instructions
+  end
+
+  def to_h
+    solve(instructions)
+  end
+
+  private
+
+  def solve(instructions, memo = {}, last = nil)
+    if instructions.empty?
+      return last.step
+    end
+
+    if last.nil?
+      roots = instructions.select do |instruction|
+        instructions.none? {|i| instruction.depend_on?(i)}
+      end
+    else
+      next_instructions = instructions.select do |instruction|
+        instruction.depend_on?(last)
+      end
+    end
+
+    roots.each do |root|
+      new_tree = {}
+      memo[root.dependent_step] = solve(next_instructions, new_tree, root)
+    end
+
+    memo
+  end
+end
+
+class DependencyTreeTest < MiniTest::Test
+  def test_basic
+    instructions = [
+      Instruction['B', 'A'],
+      Instruction['C', 'B']
+    ]
+
+    assert_equal({ 'C' => { 'B' => 'A' } }, DependencyTree.new(instructions).to_h)
+  end
+
+  def test_example
+    instructions = [
+      Instruction['C', 'A'],
+      Instruction['C', 'F'],
+      Instruction['A', 'B'],
+      Instruction['A', 'D'],
+      Instruction['B', 'E'],
+      Instruction['D', 'E'],
+      Instruction['F', 'E']
+    ]
+
+    assert_equal({
+      'C' => {
+        'A' => {
+          'B' => 'E',
+          'D' => 'E'
+        },
+        'F' => 'E'
+      }
+    }, DependencyTree.new(instructions).to_h)
+  end
+end

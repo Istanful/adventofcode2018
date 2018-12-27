@@ -10,10 +10,10 @@ class TimeAsleep
     minute = 0
 
     entries.each do |entry|
-      if entry.include?('falls')
-        minute = entry[/:(\d*)/, 1].to_i
-      elsif entry.include?('wakes')
-        sum += (entry[/:(\d*)/, 1].to_i - minute) - 1
+      if entry.falling_asleep?
+        minute = entry.minute
+      elsif entry.waking_up?
+        sum += (entry.minute - minute) - 1
       end
     end
 

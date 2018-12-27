@@ -2,6 +2,7 @@ require "minitest/autorun"
 require "time"
 require_relative "./shift_diary"
 require_relative "./time_asleep"
+require_relative "./entry"
 
 class SolutionTest < MiniTest::Test
   def test_sorts_entries
@@ -45,7 +46,7 @@ class SolutionTest < MiniTest::Test
       '[1518-11-05 00:55] wakes up'
     ]
 
-    assert_equal expected, ShiftDiary.new(input).sort
+    assert_equal expected, ShiftDiary.new(input).sort.map(&:string)
   end
 
   def test_entries_for_guard
@@ -80,7 +81,7 @@ class SolutionTest < MiniTest::Test
       '[1518-11-03 00:29] wakes up',
     ]
 
-    assert_equal expected, ShiftDiary.new(input).entries_for(10)
+    assert_equal expected, ShiftDiary.new(input).entries_for(10).map(&:string)
   end
 
   def test_time_asleep
@@ -93,7 +94,7 @@ class SolutionTest < MiniTest::Test
       '[1518-11-03 00:05] Guard #10 begins shift',
       '[1518-11-03 00:24] falls asleep',
       '[1518-11-03 00:29] wakes up',
-    ]
+    ].map { |raw| Entry.new(raw) }
 
     assert_equal 47, TimeAsleep.new(input).to_i
   end
@@ -119,7 +120,7 @@ class SolutionTest < MiniTest::Test
       '[1518-11-04 00:02] Guard #99 begins shift'
     ]
 
-    assert_equal [99, 10], ShiftDiary.new(input).guard_ids
+    assert_equal %w[99 10], ShiftDiary.new(input).guard_ids
   end
 
   def test_most_common_minute_asleep
@@ -170,9 +171,9 @@ class SolutionTest < MiniTest::Test
   def solve(input)
     master_shift_diary = ShiftDiary.new(input)
     individual_shift_diaries = master_shift_diary.guard_ids.map do |guard_id|
-      ShiftDiary.new(master_shift_diary.entries_for(guard_id))
+      ShiftDiary.new(master_shift_diary.entries_for(guard_id).map(&:string))
     end
     slacker_diary = individual_shift_diaries.max_by { |diary| TimeAsleep.new(diary.entries).to_i }
-    slacker_diary.minute_most_commonly_asleep *  slacker_diary.guard_ids.first
+    slacker_diary.minute_most_commonly_asleep *  slacker_diary.guard_ids.first.to_i
   end
 end

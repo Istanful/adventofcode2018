@@ -2,26 +2,22 @@ class ShiftDiary
   attr_reader :entries
 
   def initialize(entries)
-    @entries = entries
+    @entries = entries.map { |raw_entry| Entry.new(raw_entry) }
   end
 
   def sort
-    entries.sort_by { |entry| Time.parse(entry[/\[(.*)\]/, 1]) }
+    entries.sort_by { |entry| entry.timestamp }
   end
 
   def guard_ids
-    entries.map do |entry|
-      entry[/Guard #(\d*)/, 1]
-    end.compact.uniq.map(&:to_i)
+    entries.map(&:guard_id).compact.uniq
   end
 
   def entries_for(guard_id)
     memo = []
     current_guard_id = guard_id
     sort.each_with_index do |entry, i|
-      unless entry[/Guard #(\d*)/, 1].nil?
-        current_guard_id = entry[/Guard #(\d*)/, 1]
-      end
+      current_guard_id = entry.guard_id if entry.guard_id
 
       if current_guard_id == guard_id.to_s
         memo << entry
@@ -45,11 +41,11 @@ class ShiftDiary
     end_minute = 0
     periods = []
 
-    entries.sort.each do |entry|
-      if entry.include?('falls')
-        start_minute = entry[/:(\d*)/, 1].to_i
-      elsif entry.include?('wakes')
-        end_minute = entry[/:(\d*)/, 1].to_i
+    sort.each do |entry|
+      if entry.falling_asleep?
+        start_minute = entry.minute
+      elsif entry.waking_up?
+        end_minute = entry.minute
         periods << (start_minute...end_minute)
       end
     end
